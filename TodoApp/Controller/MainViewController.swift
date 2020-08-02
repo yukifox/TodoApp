@@ -11,12 +11,16 @@ import UIKit
 let reuseIdentifier = "reuseIdentifier"
 class MainViewController: UITableViewController {
     //MARK: - Properties
-    let itemArray = ["Play","Learn"]
+    var itemArray = ["Play","Learn"]
+    let defaults = UserDefaults.standard
     
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
+        if let items = defaults.array(forKey: "TodoListArray") as! [String] {
+            itemArray = items
+        }
 
         // Uncomment the following line to preserve selection between presentations
         // self.clearsSelectionOnViewWillAppear = false
@@ -28,9 +32,19 @@ class MainViewController: UITableViewController {
     //MARK: - Init
     func setupView(){
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: reuseIdentifier)
-        navigationItem.title = "Todoey"
-        navigationController?.navigationBar.barTintColor = .systemBlue
+        
         view.backgroundColor = .white
+        
+        configNavigationBar()
+        
+    }
+    
+    func configNavigationBar() {
+        navigationItem.title = "Todoey"
+        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
+        navigationController?.navigationBar.barTintColor = .systemBlue
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addTask))
+        navigationItem.rightBarButtonItem?.tintColor = UIColor.white
     }
 
     // MARK: - Table view data source
@@ -61,6 +75,25 @@ class MainViewController: UITableViewController {
         cell.textLabel?.text = itemArray[indexPath.item]
 
         return cell
+    }
+    
+    //MARK: - Selector
+    @objc func addTask() {
+        var textField = UITextField()
+        let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Add Item", style: .default, handler: {(action) in
+            if textField.hasText {
+                self.itemArray.append(textField.text!)
+                self.defaults.set(self.itemArray, forKey: "TodoListArray")
+                self.tableView.reloadData()
+            }
+        })
+        alert.addTextField(configurationHandler: {(alerttextField) in
+            alerttextField.placeholder = "Enter your task"
+            textField = alerttextField
+        })
+        alert.addAction(action)
+        present(alert, animated: true)
     }
     
 
