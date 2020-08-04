@@ -11,22 +11,22 @@ import UIKit
 let reuseIdentifier = "reuseIdentifier"
 class MainViewController: UITableViewController {
     //MARK: - Properties
-    var itemArray = ["Play","Learn"]
+    var itemArray = [Item]()
+    
     let defaults = UserDefaults.standard
     
-
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         setupView()
-        if let items = defaults.array(forKey: "TodoListArray") as! [String] {
-            itemArray = items
-        }
-
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
+        
+        
+        
+        
+        loadItems()
+        
+        
     }
     
     //MARK: - Init
@@ -59,20 +59,22 @@ class MainViewController: UITableViewController {
         return itemArray.count
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        
-        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        } else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        }
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+//        
+        tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
+        let cell = UITableViewCell(style: .default, reuseIdentifier: reuseIdentifier)
+        let item = itemArray[indexPath.row]
 
-        cell.textLabel?.text = itemArray[indexPath.item]
+        cell.textLabel?.text = item.title
+        
+        cell.accessoryType = item.done == true ? .checkmark : .none
+        
+        
 
         return cell
     }
@@ -83,9 +85,12 @@ class MainViewController: UITableViewController {
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default, handler: {(action) in
             if textField.hasText {
-                self.itemArray.append(textField.text!)
-                self.defaults.set(self.itemArray, forKey: "TodoListArray")
-                self.tableView.reloadData()
+                let newItem = Item()
+                newItem.title = textField.text!
+                self.itemArray.append(newItem)
+                
+                self.saveItems()
+//
             }
         })
         alert.addTextField(configurationHandler: {(alerttextField) in
@@ -94,6 +99,32 @@ class MainViewController: UITableViewController {
         })
         alert.addAction(action)
         present(alert, animated: true)
+    }
+    
+    func saveItems() {
+        let encoder = PropertyListEncoder()
+        do {
+            let data = try encoder.encode(self.itemArray)
+            try data.write(to: self.dataFilePath!)
+
+        } catch {
+            print("Error endcoding item array")
+        }
+        
+        self.tableView.reloadData()
+
+    }
+    
+    func loadItems() {
+        do {
+            if let data = try? Data(contentsOf: dataFilePath!) {
+                let decoder = PropertyListDecoder()
+                itemArray = try decoder.decode([Item].self, from: data)
+            }
+
+        } catch {
+            
+        }
     }
     
 
