@@ -7,13 +7,25 @@
 //
 
 import UIKit
+import CoreData
 
 let reuseIdentifier = "reuseIdentifier"
 class MainViewController: UITableViewController {
     //MARK: - Properties
-    var itemArray = [Item]()
+    let searchController = UISearchController(searchResultsController: nil)
+    let searchBar = UISearchBar(frame: .zero)
+    var filterListApp = [ItemCD]()
+    var itemArray = [ItemCD]()
+    var selectedCategory: Category? {
+        didSet {
+            loadItems()
+        }
+    }
     
     let defaults = UserDefaults.standard
+    
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    
     
     let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     override func viewDidLoad() {
@@ -23,8 +35,9 @@ class MainViewController: UITableViewController {
         
         
         
-        
-        loadItems()
+        let request: NSFetchRequest<ItemCD> = ItemCD.fetchRequest()
+
+       loadItems(with: request)
         
         
     }
@@ -32,6 +45,12 @@ class MainViewController: UITableViewController {
     //MARK: - Init
     func setupView(){
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: reuseIdentifier)
+        tableView.tableHeaderView = searchBar
+        searchBar.sizeToFit()
+        searchBar.showsCancelButton = false
+        searchBar.delegate = self
+        
+        
         
         view.backgroundColor = .white
         
@@ -45,6 +64,7 @@ class MainViewController: UITableViewController {
         navigationController?.navigationBar.barTintColor = .systemBlue
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addTask))
         navigationItem.rightBarButtonItem?.tintColor = UIColor.white
+        
     }
 
     // MARK: - Table view data source
@@ -59,6 +79,7 @@ class MainViewController: UITableViewController {
         return itemArray.count
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
 //        
         tableView.reloadData()
@@ -85,8 +106,13 @@ class MainViewController: UITableViewController {
         let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default, handler: {(action) in
             if textField.hasText {
-                let newItem = Item()
+                
+                let newItem = ItemCD(context: self.context)
+                
+                
                 newItem.title = textField.text!
+                newItem.done = false
+                newItem.parentCategory = self.selectedCategory
                 self.itemArray.append(newItem)
                 
                 self.saveItems()
@@ -101,76 +127,92 @@ class MainViewController: UITableViewController {
         present(alert, animated: true)
     }
     
+    //MARK: Handler
+    
     func saveItems() {
-        let encoder = PropertyListEncoder()
+        
+        if context.hasChanges {
         do {
-            let data = try encoder.encode(self.itemArray)
-            try data.write(to: self.dataFilePath!)
+            try context.save()
+            
+            print("have save")
 
         } catch {
             print("Error endcoding item array")
         }
         
         self.tableView.reloadData()
-
-    }
-    
-    func loadItems() {
-        do {
-            if let data = try? Data(contentsOf: dataFilePath!) {
-                let decoder = PropertyListDecoder()
-                itemArray = try decoder.decode([Item].self, from: data)
-            }
-
-        } catch {
-            
         }
     }
     
+    func loadItems(with request: NSFetchRequest<ItemCD> = ItemCD.fetchRequest(), predicate: NSPredicate? = nil) {
+        //Encode Decode
+//        do {
+//            if let data = try? Data(contentsOf: dataFilePath!) {
+//                let decoder = PropertyListDecoder()
+//                itemArray = try decoder.decode([Item].self, from: data)
+//            }
+//
+//        } catch {
+//
+//        }
+        
+        //Core Data
+        
+//        let request: NSFetchRequest<ItemCD> = ItemCD.fetchRequest()
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        if let addtionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, addtionalPredicate])
+        } else {
+            request.predicate = categoryPredicate
+        }
+        
+        
+        do {
+            itemArray = try context.fetch(request)
 
-    /*
-    // Override to support conditional editing of the table view.
-    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
+        } catch {
+            print("\(error)")
+        }
+        tableView.reloadData()
+        
     }
-    */
+    
 
-    /*
-    // Override to support editing the table view.
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            // Delete the row from the data source
-            tableView.deleteRows(at: [indexPath], with: .fade)
-        } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
+    
+
+}
+
+extension MainViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request: NSFetchRequest<ItemCD> = ItemCD.fetchRequest()
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+//        request.predicate = predicate
+        
+        let sortDescpriptor = NSSortDescriptor(key: "title", ascending: true)
+        request.sortDescriptors = [sortDescpriptor]
+        
+        loadItems(with: request, predicate: predicate)
+        
+//        do {
+//            itemArray = try context.fetch(request)
+//        } catch {
+//            print("Error with \(error)")
+//        }
+        tableView.reloadData()
     }
-    */
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            
+            loadItems()
+            searchBar.resignFirstResponder()
 
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
+            DispatchQueue.main.async {
 
+            }
+        }
     }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
-    }
-    */
-
+    
+    
 }
