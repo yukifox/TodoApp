@@ -10,6 +10,7 @@
 import Foundation
 import CoreData
 
+
 @objc(ItemCD)
 public class ItemCD: NSManagedObject {
 
