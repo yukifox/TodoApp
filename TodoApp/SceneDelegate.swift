@@ -2,7 +2,7 @@
 //  SceneDelegate.swift
 //  TodoApp
 //
-//  Created by Trần Huy on 7/31/20.
+//  Created by Trần Huy on 8/7/20.
 //  Copyright © 2020 Trần Huy. All rights reserved.
 //
 
@@ -22,6 +22,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(frame: windowSence.coordinateSpace.bounds)
         window?.windowScene = windowSence
         let mainVC = UINavigationController(rootViewController: CategoryViewController())
+//        mainVC.navigationBar.prefersLargeTitles = true
+//        mainVC.navigationBar.barStyle = .default
+////        mainVC.navigationBar.isTranslucent = false
         window?.rootViewController = mainVC
         window?.makeKeyAndVisible()
     }
@@ -56,7 +59,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // to restore the scene back to its current state.
         
         // Save changes in the application's managed object context when the application transitions to the background.
-        (UIApplication.shared.delegate as? AppDelegate)?.saveContext()
+//        (UIApplication.shared.delegate as? AppDelegate)?.saveContext()
         
     }
 
