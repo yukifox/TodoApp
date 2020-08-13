@@ -10,7 +10,7 @@ import UIKit
 import RealmSwift
 import SwipeCellKit
 import ChameleonFramework
-let CategoryCell = "CategoryCell"
+
 class CategoryViewController: UITableViewController {
     
     //MARK: - Properties
@@ -68,7 +68,7 @@ class CategoryViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        let mainVC = TodoViewController()
+        let mainVC = TodoView()
         mainVC.selectedCategory = categories?[indexPath.row]
         self.navigationController?.pushViewController(mainVC, animated: true)
     }

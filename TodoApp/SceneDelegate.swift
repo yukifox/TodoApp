@@ -21,7 +21,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowSence = (scene as? UIWindowScene) else { return }
         window = UIWindow(frame: windowSence.coordinateSpace.bounds)
         window?.windowScene = windowSence
-        let mainVC = UINavigationController(rootViewController: CategoryViewController())
+        let mainVC = UINavigationController(rootViewController: MainViewController())
 //        mainVC.navigationBar.prefersLargeTitles = true
 //        mainVC.navigationBar.barStyle = .default
 ////        mainVC.navigationBar.isTranslucent = false

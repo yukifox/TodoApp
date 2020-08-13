@@ -20,7 +20,7 @@ struct Message {
         self.action = action
     }
     
-    init(text: String, actionTitle: String, actionHandler: @escaping() -> Void) {
+    init(text: String, actionTitle: String, actionHandler: @escaping () -> Void) {
         self.text = text
         self.action = Action(title: actionTitle, handler: actionHandler)
     }

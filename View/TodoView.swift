@@ -12,9 +12,10 @@ import RealmSwift
 import SwipeCellKit
 import ChameleonFramework
 
-
 let todoCell = "todoCell"
-class TodoViewController: UITableViewController {
+
+
+class TodoView: UITableViewController {
     //MARK: - Properties
     let realm = try! Realm()
     
@@ -26,73 +27,43 @@ class TodoViewController: UITableViewController {
     var selectedCategory: Category? {
         didSet {
             loadItems()
+            tableView.backgroundColor = UIColor(hexString: self.selectedCategory!.colour, withAlpha: 1)?.lighten(byPercentage: 20)
         }
     }
-    
-    let defaults = UserDefaults.standard
-    
-    
-    
+
     
     let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        setupView()
-        configNavigationBar()
-        
-        
-        
-//        let request: NSFetchRequest<ItemCD> = ItemCD.fetchRequest()
-//
-//       loadItems(with: request)
-        
-        
+        InitView()
+
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        configNavigationBar()
+
     }
     
     //MARK: - Init
-    func setupView(){
-        tableView.register(SwipeTableViewCell.self, forCellReuseIdentifier: todoCell)
-        tableView.tableHeaderView = searchBar
+    func InitView(){
+//        tableView.register(SwipeTableViewCell.self, forCellReuseIdentifier: todoCell)
+        tableView.register(UINib(nibName: "ItemTableViewCell", bundle: nil), forCellReuseIdentifier: todoCell)
+//        tableView.tableHeaderView = searchBar
 //        tableView.separatorStyle = .none
         tableView.tableFooterView = UIView()
-        tableView.backgroundColor = UIColor(hexString: self.selectedCategory!.colour, withAlpha: 0.5)
-        
         searchBar.sizeToFit()
         searchBar.showsCancelButton = false
         searchBar.delegate = self
         
-        view.backgroundColor = .white
+        
 
     }
     
-    func configNavigationBar() {
-        navigationItem.title = selectedCategory?.name
-        
-        
-        if let colourHex = selectedCategory?.colour {
-            
-            navigationController?.navigationBar.barTintColor = UIColor(hexString: colourHex)
-            searchBar.barTintColor = UIColor(hexString: colourHex)
-            searchBar.searchTextField.backgroundColor = .white
-            navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: ContrastColorOf(UIColor(hexString: colourHex)!, returnFlat: true)]
-            navigationController?.navigationBar.tintColor = ContrastColorOf(UIColor(hexString: colourHex)!, returnFlat: true)
-            navigationItem.rightBarButtonItem?.tintColor = ContrastColorOf(UIColor(hexString: colourHex)!, returnFlat: true)
 
-            
-        }
-        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addTask))
-        navigationController?.navigationBar.topItem?.title = "Back To Home"
-        
-    }
 
     // MARK: - Table view data source
     override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 50
+        return 60
     }
 
     override func numberOfSections(in tableView: UITableView) -> Int {
@@ -107,7 +78,8 @@ class TodoViewController: UITableViewController {
             return "Done Tasks"
         }
     }
-
+    
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
         if section == 0 {
@@ -117,55 +89,40 @@ class TodoViewController: UITableViewController {
         }
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//        if let item = listItems?[indexPath.row] {
-//            do {
-//                try realm.write {
-//                    item.done = !item.done
-//                }
-//            } catch {
-//                print("Error")
-//            }
-//        }
-        
-//        todoItems![indexPath.row].done = !todoItems![indexPath.row].done
-//        
         tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: todoCell, for: indexPath) as! SwipeTableViewCell
+        let cell = tableView.dequeueReusableCell(withIdentifier: todoCell, for: indexPath) as! ItemTableViewCell
         cell.delegate = self
         switch(indexPath.section) {
         case 0:
-            if todoItems.isEmpty == false {
+            if todoItems.count != 0 {
                 let item = todoItems[indexPath.row]
             
-                cell.textLabel!.text = item.title
+                cell.name = item.title
+                let date = item.dateDue
                 
-                cell.accessoryType = item.done == true ? .checkmark : .none
-            } else {
-                cell.textLabel?.text = "No Items Added"
+                cell.date = item.detailText(for: item)
+                cell.completed = item.done
+                
             }
         default:
             if doneItems.isEmpty == false {
                 let item = doneItems[indexPath.row]
-                cell.textLabel!.text = item.title
-                
-                cell.accessoryType = item.done == true ? .checkmark : .none
-            } else {
-                cell.textLabel?.text = "No Items Added"
+                cell.lblTitle!.text = item.title
+                cell.lblDue.text = item.detailText(for: item)
+                cell.completed = item.done
             }
         }
         
-        if let colour = UIColor(hexString: selectedCategory!.colour)!.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(listItems!.count)) {
+        if let colour = UIColor(hexString: selectedCategory!.colour)!.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(listItems!.count * 2)) {
             cell.backgroundColor = colour
-            cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+            cell.lblTitle?.textColor = ContrastColorOf(colour, returnFlat: true)
+            cell.lblDue?.textColor = ContrastColorOf(colour, returnFlat: true)
         }
-        
-        
-        
 
         return cell
     }
@@ -185,58 +142,11 @@ class TodoViewController: UITableViewController {
     }
     
     //MARK: - Selector
-    @objc func addTask() {
-        var textField = UITextField()
-        let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
-        let action = UIAlertAction(title: "Add Item", style: .default, handler: {(action) in
-            if textField.hasText {
-                
-                if let curCategory = self.selectedCategory {
-                    do {
-                        try self.realm.write {
-                            let newItem = Item()
-                            newItem.title = textField.text!
-                            newItem.dateCreated = Date()
-                            curCategory.items.append(newItem)
-                        }
-                    } catch {
-                        print("Error with \(error)")
-                    }
-                    self.loadItems()
-                    
-
-                }
-                self.tableView.reloadData()
-
-                
 //
-            }
-        })
-        alert.addTextField(configurationHandler: {(alerttextField) in
-            alerttextField.placeholder = "Enter your task"
-            textField = alerttextField
-        })
-        alert.addAction(action)
-        present(alert, animated: true)
-    }
     
     //MARK: Handler
     
-//    func saveItems() {
 //
-//        if context.hasChanges {
-//        do {
-//            try context.save()
-//
-//            print("have save")
-//
-//        } catch {
-//            print("Error endcoding item array")
-//        }
-//
-//        self.tableView.reloadData()
-//        }
-//    }
     
     func loadItems() {
         
@@ -251,26 +161,6 @@ class TodoViewController: UITableViewController {
                 doneItems.append(item)
             }
         }
-       
-        
-        //Core Data
-        
-//        let request: NSFetchRequest<ItemCD> = ItemCD.fetchRequest()
-//        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
-//
-//        if let addtionalPredicate = predicate {
-//            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, addtionalPredicate])
-//        } else {
-//            request.predicate = categoryPredicate
-//        }
-//
-//
-//        do {
-//            itemArray = try context.fetch(request)
-//
-//        } catch {
-//            print("\(error)")
-//        }
         tableView.reloadData()
 
     }
@@ -280,7 +170,7 @@ class TodoViewController: UITableViewController {
 
 }
 
-extension TodoViewController: UISearchBarDelegate {
+extension TodoView: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         listItems = listItems?.filter("title CONTAINS[cd] %@", searchBar.text).sorted(byKeyPath: "dateCreated", ascending: true)
         tableView.reloadData()
@@ -300,16 +190,8 @@ extension TodoViewController: UISearchBarDelegate {
     
     
 }
-extension TodoViewController: SwipeTableViewCellDelegate {
-//    func tableView(_ tableView: UITableView, editActionsOptionsForRowAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> SwipeOptions {
-//        var options = SwipeOptions()
-//        options.expansionStyle = orientation == .right ? .destructive : .selection
-//        
-//        
-//        return options
-//    }
-    
-    
+extension TodoView: SwipeTableViewCellDelegate {
+
     func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> [SwipeAction]? {
         switch(indexPath.section){
         case 0:
@@ -338,6 +220,8 @@ extension TodoViewController: SwipeTableViewCellDelegate {
                             do {
                                 try self.realm.write{
                                     item.done = true
+                                    let date = Date()
+                                    item.dateCompleted = date
                                     tableView.reloadData()
                                 }
                             } catch {
@@ -351,7 +235,44 @@ extension TodoViewController: SwipeTableViewCellDelegate {
                     return [doneAction]
                 }
         default:
-            return nil
+            if orientation == .right {
+
+            let deleteAction = SwipeAction(style: .destructive, title: "Delete") { action, indexPath in
+                let item = self.todoItems[indexPath.row]
+                    do {
+                        try self.realm.write{
+                            self.realm.delete(item)
+                        }
+                    } catch {
+                        print("Error with \(error)")
+                    }
+                self.loadItems()
+                tableView.reloadData()
+            }
+
+            // customize the action appearance
+            deleteAction.image = #imageLiteral(resourceName: "Trash Icon")
+            
+            return [deleteAction]
+            } else {
+                let undoneAction = SwipeAction(style: .default, title: "Not Done", handler: {(action, indexPath) in
+                    let item = self.doneItems[indexPath.row]
+                        do {
+                            try self.realm.write{
+                                item.done = false
+                                item.dateCompleted = nil
+                                tableView.reloadData()
+                            }
+                        } catch {
+                            print("Error")
+                        }
+                        self.loadItems()
+                        tableView.reloadData()
+                    
+                })
+                undoneAction.backgroundColor = .systemGray
+                return [undoneAction]
+            }
         }
         
     }
